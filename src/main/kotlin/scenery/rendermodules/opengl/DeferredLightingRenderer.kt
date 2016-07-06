@@ -294,7 +294,6 @@ open class DeferredLightingRenderer : Renderer, Hubable {
     }
 
     protected fun updateFontBoard(board: FontBoard) {
-        logger.info("Updating font board...")
         val atlas = fontAtlas.getOrPut(board.fontName, { SDFFontAtlas(this.hub!!, board.fontName) })
         val m = atlas.createMeshForString(board.text)
 
@@ -317,12 +316,12 @@ open class DeferredLightingRenderer : Renderer, Hubable {
                     1)
 
             t.setClamp(false, false);
-            t.copyFrom(atlas.getAtlas())
+            t.copyFrom(atlas.getAtlas(),
+                    0,
+                    true)
             t
         })
         s.textures.put("diffuse", texture)
-
-        logger.info("Board has been updated: $texture")
     }
 
     protected fun preDrawAndUpdateGeometryForNode(n: Node) {
@@ -334,19 +333,15 @@ open class DeferredLightingRenderer : Renderer, Hubable {
                     updateFontBoard(n)
                 }
                 updateVertices(n)
-                logger.info("updated vertices")
                 updateNormals(n)
-                logger.info("updated normals")
 
                 if (n.texcoords.size > 0) {
                     updateTextureCoords(n)
                 }
-                logger.info("updated texcoords")
 
                 if (n.indices.size > 0) {
                     updateIndices(n)
                 }
-                logger.info("updated indices")
 
                 n.dirty = false
             }
@@ -731,7 +726,6 @@ open class DeferredLightingRenderer : Renderer, Hubable {
     fun initializeNode(node: Node): Boolean {
         var s: OpenGLObjectState
 
-        logger.info("Initializing ${node.name}")
         if (node.instanceOf == null) {
             s = node.metadata["DeferredLightingRenderer"] as OpenGLObjectState
         } else {

@@ -53,7 +53,7 @@ class FontRenderingExample: SceneryDefaultApplication("FontRenderingExample") {
 
         val cam: Camera = DetachedHeadCamera()
         with(cam) {
-            position = GLVector(0.0f, 0.0f, -5.0f)
+            position = GLVector(0.0f, 0.0f, -25.0f)
             view = GLMatrix().setCamera(cam.position, cam.position + cam.forward, cam.up)
             projection = GLMatrix()
                     .setPerspectiveProjectionMatrix(
@@ -132,6 +132,10 @@ class FontRenderingExample: SceneryDefaultApplication("FontRenderingExample") {
 
         repl.addAccessibleObject(scene)
         repl.addAccessibleObject(deferredRenderer!!)
+        repl.addAccessibleObject(board)
+        repl.start()
+        repl.eval("var text = objectLocator(\"FontBoard\");")
+
         repl.showConsoleWindow()
 
 //        thread {

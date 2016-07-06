@@ -60,7 +60,7 @@ void main() {
     vec3 outlineColor = vec3(0.5f, 0.3f, 0.3f);
     vec3 bgColor = vec3(1.0f, 1.0f, 1.0f);
     float pattern = 0.0f;
-    float texw = 64.0f;
+    float texw = 1024.0f;
     float texh = texw;
 
     float oneu = 1.0f/texw;
@@ -75,16 +75,14 @@ void main() {
     // Center st00 on lower left texel and rescale to [0 ,1] for lookup
     vec2 st00 = ( uv00 + vec2 (0.5) ) * vec2 ( oneu , onev );
     // Sample distance D from the centers of the four closest texels
-            float aascale = 1.0;
+            float aascale = 0.5;
             float D00 = texture ( ObjectTextures[1], st00 ).r ;
             float D10 = texture ( ObjectTextures[1], st00 + vec2 (aascale*oneu , 0.0) ).r;
             float D01 = texture ( ObjectTextures[1], st00 + vec2 (0.0 , aascale*onev )).r;
             float D11 = texture ( ObjectTextures[1], st00 + vec2 (aascale*oneu, aascale*onev )).r;
 
     if(!debug) {
-
-
-        if(D00 > 1000000.0f) {
+        if(D00 > 900.0f) {
             discard;
         }
 
@@ -100,6 +98,7 @@ void main() {
         rgb = vec3(pattern);
         rgb = mix(rgb, outlineColor, pattern);
         rgb = mix(bgColor, rgb, pattern);
+
         if(pattern <= 0.01) {
             discard;
         }
@@ -109,7 +108,8 @@ void main() {
 //        float aastep = fwidth (D);
 //        pattern = smoothstep (0.5 - aastep , 0.5+ aastep , D);
 //        rgb = vec3(pattern);
-            rgb = vec3((D00+1000.0f)/1000.0f);
+//            rgb = vec3(VertexIn.TexCoord.x, VertexIn.TexCoord.y, 0.0f);
+           rgb = vec3(texture(ObjectTextures[1], VertexIn.TexCoord).r);
     }
 
     gAlbedoSpec.rgb = rgb;

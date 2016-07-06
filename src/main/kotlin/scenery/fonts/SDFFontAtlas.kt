@@ -21,7 +21,7 @@ import java.util.*
  *
  * @author Ulrik Günther <hello@ulrik.is>
  */
-class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: Int = 64) {
+open class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: Int = 64) {
     var charset = (32..127)
     var fontMap = LinkedHashMap<Char, Pair<Float, ByteBuffer>>()
     var fontSize: Float = 0f
@@ -42,10 +42,7 @@ class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: In
         charset.map {
             var start = System.nanoTime()
             val character =  genCharImage(it.toChar(), Font(fontName, 0, fontSize.toInt()), distanceFieldSize)
-            var dur = System.nanoTime() - start
-            System.err.println("${it.toChar()}: Generation took ${dur/10e6} ms")
 
-            start = System.nanoTime()
             input = ocl.wrapInput(character.second)
             val outputBuffer = ByteBuffer.allocate(4*distanceFieldSize*distanceFieldSize)
             output = ocl.wrapOutput(outputBuffer)
@@ -62,16 +59,11 @@ class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: In
             ocl.readBuffer(output, outputBuffer)
             val buf = outputBuffer.duplicate()
             buf.rewind()
-            System.err.println("Put ${character.first} for ${it.toChar()}")
             fontMap.put(it.toChar(), Pair(character.first, buf))
-            dur = System.nanoTime() - start
-
-            System.err.println("${it.toChar()}: DT took ${dur/10e6} ms")
         }
 
         fontAtlasBacking = toFontAtlas(fontMap, distanceFieldSize)
-
-        dumpToFile(fontAtlasBacking)
+//        dumpToFile(fontAtlasBacking)
     }
 
     fun dumpToFile(buf: ByteBuffer) {
@@ -108,15 +100,6 @@ class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: In
         g.drawString(c.toString(), 10, size/2 + metrics.maxAscent/2 - 10)
         g.dispose();
 
-//        val flipped = BufferedImage(size, size, BufferedImage.TYPE_BYTE_GRAY)
-//        val gf = flipped.createGraphics()
-//        val at = AffineTransform()
-//        at.concatenate(AffineTransform.getScaleInstance(1.0, -1.0))
-//        at.concatenate(AffineTransform.getTranslateInstance(0.0, -size*1.0))
-//        gf.transform(at)
-//        gf.drawImage(image, 0, 0, null)
-//        gf.dispose()
-
         val data = (image.getRaster().getDataBuffer() as DataBufferByte).data
 
         var imageBuffer: ByteBuffer = ByteBuffer.allocateDirect(data.size)
@@ -128,11 +111,10 @@ class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: In
     }
 
     protected fun toFontAtlas(map: AbstractMap<Char, Pair<Float, ByteBuffer>>, charSize: Int): ByteBuffer {
-        val start = System.nanoTime()
-        // find power-of-two texture size that fits
         var texWidth = 1
         val mapSize = map.size
 
+        // find power-of-two texture size that fits
         while (texWidth < charSize*Math.sqrt(mapSize.toDouble())) {
             texWidth *= 2
         }
@@ -159,29 +141,18 @@ class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: In
                     val glyphIndexOnLine = glyph-minGlyphIndex
                     glyphTexcoords.putIfAbsent(char, GLVector(
                             (glyphIndexOnLine*charSize*1.0f)/texWidth,
-                            1.0f-(line*charSize*1.0f)/texHeight,
+                            (line*charSize*1.0f)/texHeight,
                             (glyphIndexOnLine*charSize*1.0f)/texWidth+(charSize*1.0f)/(1.0f*texWidth),
-                            1.0f-(line*charSize*1.0f+charSize*1.0f)/texHeight))
+                            (line*charSize*1.0f+charSize*1.0f)/texHeight))
                     fb.put(readLineFromBuffer(charSize, it, charBuffer.second))
                 }
             }
         }
 
         buffer.rewind()
-//        val flipped = ByteBuffer.allocate(4*texWidth*texHeight)
-//        val fb_flipped = flipped.asFloatBuffer()
-//        (0..texHeight-1).reversed().forEach { line ->
-//            System.err.println("putting $line")
-//            fb_flipped.put(readLineFromBuffer(texWidth, line, buffer))
-//        }
-//
-//        flipped.rewind()
-        val dur = System.nanoTime() - start
 
         atlasWidth = texWidth
         atlasHeight = texHeight
-
-        System.err.println("Creating atlas took ${dur/10e6} ms, ${atlasWidth}x${atlasHeight}")
 
         return buffer
     }
@@ -217,7 +188,6 @@ class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: In
         var basei = 0
 
         text.toCharArray().forEachIndexed { index, char ->
-            System.err.println("base is $basex")
             vertices.addAll(listOf(
                     basex + 0.0f, 0.0f, 0.0f,
                     basex + 1.0f, 0.0f, 0.0f,
@@ -239,7 +209,6 @@ class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: In
 
             val glyphTexCoords = getTexcoordsForGlyph(char)
 
-            System.err.println("Texcoords for $char are $glyphTexCoords")
             texcoords.addAll(listOf(
                     glyphTexCoords.x(), glyphTexCoords.w(),
                     glyphTexCoords.z(), glyphTexCoords.w(),
@@ -248,7 +217,7 @@ class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: In
             ))
 
             // add font width as new base size
-            basex += 1.0f//fontMap.get(char)!!.first
+            basex += fontMap.get(char)!!.first
             basei += 4
         }
 
@@ -256,9 +225,6 @@ class SDFFontAtlas(var hub: Hub, val fontName: String, val distanceFieldSize: In
         m.normals = (normals.clone() as ArrayList<Float>).toFloatArray()
         m.texcoords = (texcoords.clone() as ArrayList<Float>).toFloatArray()
         m.indices = (indices.clone() as ArrayList<Int>).toIntArray()
-
-        System.err.println("Created ${m.vertices.size/3}v/${m.normals.size/3}n/${m.texcoords.size/2}t/${m.indices.size}i for $fontName")
-//        System.err.println("${m.indices.last()}, ${vertices.get(m.indices.last()*3+2)}, ${vertices.last()}")
 
         return m
     }
